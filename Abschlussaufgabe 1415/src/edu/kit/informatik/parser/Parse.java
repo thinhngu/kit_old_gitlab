@@ -6,20 +6,23 @@ import edu.kit.informatik.*;
 public class Parse {
     private String lookahead = "";
     NodeList nodelist;
-    
+
     String idregex = "[0-9]+";
-    
+
     String strategyregex = "S1|S2|S3";
-    private StringTokenizer tokenizer = new StringTokenizer(lookahead, ",\\(\\)",
-            true);
+    private StringTokenizer tokenizer;
 
     public Parse(String input, NodeList nodelist) {
         this.lookahead = input;
         this.nodelist = nodelist;
+        tokenizer = new StringTokenizer(lookahead, ",\\(\\)", true);
+        next();
     }
 
     private void next() {
-        lookahead = tokenizer.nextToken();
+        if (tokenizer.hasMoreTokens()) {
+            lookahead = tokenizer.nextToken();
+        }
 
     }
 
@@ -31,50 +34,50 @@ public class Parse {
         }
     }
 
-    String in = lookahead.replaceAll(" ", "");
-    /* einfache strategie wie "recommend S1 105" funktioniert, aber nur ohne next zeigt nicht auf das nächste
-    token? */
+    /*
+     * einfache strategie wie "recommend S1 105" funktioniert, aber nur ohne
+     * next zeigt nicht auf das nächste token? recommend UNION(S1 105, S1 105)
+     * recommend UNION(UNION ( S1 105,S1 105), S1 105)
+     */
     public Operation parseterm() throws ParseException {
-        Operation operation;
-        operation = parsefinale();
-        
-        if (operation == null) {
-            if (in.startsWith("UNION") || in.startsWith("INTERSECTION")) {
-                next();
-                match("(");
 
-                Operation one = parseterm();
-                match(",");
-                Operation two = parseterm();
-                match(")");
+        lookahead = lookahead.trim();
+        if (lookahead.startsWith("UNION")
+                || lookahead.startsWith("INTERSECTION")) {
 
-                if (in.startsWith("UNION") || in.startsWith("INTERSECTION")) {
-                    Union union = new Union(one, two);
-                    return union;
-                } else {
-                    Intersection intersection = new Intersection(one, two);
-                    return intersection;
-                }
+            String in = lookahead;
+            next();
+            match("(");
+
+            Operation one = parseterm();
+            match(",");
+            Operation two = parseterm();
+            match(")");
+
+            if (in.startsWith("UNION")) {
+                Union union = new Union(one, two);
+                return union;
+            } else {
+                Intersection intersection = new Intersection(one, two);
+                return intersection;
             }
         }
-        else {
-            return operation;
-        }
-        throw new ParseException();
+        return parsefinale();
+
     }
 
     private Operation parsefinale() throws ParseException {
         String strategy = "";
         int id = -1;
-        String [] insplit = lookahead.split(" ");
-        if (insplit[1].matches(strategyregex)) {
-            strategy = insplit[1];
-            //next();
+        String[] insplit = lookahead.split(" ");
+        if (insplit[0].matches(strategyregex)) {
+            strategy = insplit[0];
+
         }
 
-        if (insplit[2].matches(idregex)) {
-            id = Integer.parseInt(insplit[2]);
-            //next();
+        if (insplit[1].matches(idregex)) {
+            id = Integer.parseInt(insplit[1]);
+            next();
             Final finale = new Final(strategy, id, nodelist);
             return finale;
         }
